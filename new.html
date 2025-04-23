@@ -1,0 +1,10 @@
+<script>
+  fetch("https://victim.com/api/test", {
+  method: "POST",
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ test: true })
+});
+</script>
