@@ -1,0 +1,1274 @@
+openapi: 3.1.0
+info:
+  title: Payment Gateway API
+  description: Payment Gateway application
+  version: ""
+servers:
+  - url: https://payment-gateway-staging.easyparksystem.net
+tags:
+  - name: GooglePay Resource
+    description: API for GooglePay payments
+  - name: Adyen Payment Notification Resource
+    description: API for Adyen payment notification flow
+  - name: Onboarding details
+    description: Rest API for retrieving details on how to add the payment method
+  - name: Ping Resource
+    description: Rest API for ping operations
+  - name: Payment Configuration Resource
+    description: API for payment configurations
+  - name: Payment Device Resource
+    description: API for payment devices
+  - name: GooglePay Resource
+    description: Internal API for GooglePay payments
+  - name: Adyen Resource
+    description: Internal API for Adyen flow
+  - name: CyberSource credit card tokenization Resource
+    description: API for CyberSource credit card tokenization flow
+  - name: Adyen Resource
+    description: API for Adyen flow
+  - name: Payment device migration
+    description: Temporal REST API for payment device creation for migration flow
+paths:
+  /external/googlepay/payment/initialize:
+    post:
+      tags:
+        - GooglePay Resource
+      description: Endpoint for creating a Google Pay payment device in payment gateway.
+      operationId: initializeGooglePayPayment_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.model.googlepay.GooglePayInitializePaymentHttpRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentResponse'
+  /external/googlepay/payment/details:
+    post:
+      tags:
+        - GooglePay Resource
+      description: "Submits the redirect result for Google Pay payment that requires 3D Secure authentication. \n            This step is only needed when no final state has been reached on the /payments request."
+      externalDocs:
+        description: Adyen documentation
+        url: https://docs.adyen.com/api-explorer/Checkout/latest/post/payments/details
+      operationId: addPaymentDetails_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.model.googlepay.GooglePayPaymentDetailsHttpRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentDetailsResponse'
+  /external/cybersource/paymentwindow/tokenize:
+    post:
+      tags:
+        - CyberSource credit card tokenization Resource
+      description: "Passes transient token to CyberSource to create a recurring token. Zero amount authorisation is done for validation.\n            In case tokenization is successful then token details are published via Kafka.\n        "
+      operationId: tokenize
+      parameters:
+        - name: arg2
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.cybersource.paymentwindow.controller.ExternalCyberSourcePaymentWindowController.TokenizationHttpRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content: {}
+  /external/adyen/payment/initialize:
+    post:
+      tags:
+        - Adyen Resource
+      description: |-
+        Sends encrypted card details to Adyen in order to perform card tokenization.
+                    If 3DS is not required, then payment device will be persisted in this endpoint and event will be sent to kafka. If 3DS is required, then extra action payload will be returned.
+                    Not meant for usage outside the payment window flow!
+      externalDocs:
+        description: Adyen documentation
+        url: https://docs.adyen.com/api-explorer/Checkout/69/post/payments
+      operationId: initiatePayment
+      parameters:
+        - name: accountReference
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: paymentConfigurationId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: channel
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - ANDROID
+              - IOS
+              - WEB
+              - PERMITS
+              - GUEST_CHECKOUT
+              - UNKNOWN
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentHttpRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentResponse'
+  /external/adyen/payment/details:
+    post:
+      tags:
+        - Adyen Resource
+      description: "Submits 3DS results for a payment created using /payments. This step is only needed when no final state has been reached on the /payments request. \n            This should only be called from the paymentWindow onAdditionalDetails method when the customer has successfully completed the 3DS auth flow."
+      externalDocs:
+        description: Adyen documentation
+        url: https://docs.adyen.com/api-explorer/Checkout/latest/post/payments/details
+      operationId: addPaymentDetails_2
+      parameters:
+        - name: accountReference
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: paymentConfigurationId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: channel
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - ANDROID
+              - IOS
+              - WEB
+              - PERMITS
+              - GUEST_CHECKOUT
+              - UNKNOWN
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentDetailsHttpRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentDetailsResponse'
+  /external/adyen/notifications:
+    post:
+      tags:
+        - Adyen Payment Notification Resource
+      description: |-
+        Accept notifications.
+                    Send the response "[accepted]" from your server to the Adyen server within 10 seconds of receiving a notification. We recommend that you accept and reply to notifications separately from processing them.
+                    After our server receives this response, all items in the notification are marked as received.
+      externalDocs:
+        description: Adyen documentation
+        url: https://docs.adyen.com/developers/payment-notifications
+      operationId: acceptNotification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.ExternalAdyenNotificationController.NotificationResponse'
+  /ping:
+    get:
+      tags:
+        - Ping Resource
+      summary: Ping service
+      operationId: pingPublic
+      responses:
+        "200":
+          description: pong
+          content:
+            '*/*':
+              schema:
+                type: string
+  /external/adyen/payment/session:
+    get:
+      tags:
+        - Adyen Resource
+      description: Creates payment window session data required for the payment window. This endpoint is the first step in initializing the payment window.
+      operationId: initializePaymentWindowSessionData
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentWindowSessionDataResponse'
+  /external/adyen/payment/payment-methods:
+    get:
+      tags:
+        - Adyen Resource
+      description: Queries enabled payment methods from Adyen
+      externalDocs:
+        description: Adyen documentation
+        url: https://docs.adyen.com/api-explorer/Checkout/latest/post/paymentMethods
+      operationId: getPaymentMethods_1
+      parameters:
+        - name: paymentConfigurationId
+          in: query
+          description: Reference to the payment configuration for which payment method information is queried
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Reference to the payment configuration for which payment method information is queried
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethodsResponse'
+components:
+  schemas:
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.ReversalPayload:
+      type: object
+      properties:
+        serviceReference:
+          type: string
+        client:
+          type: string
+      required:
+        - serviceReference
+      title: ReversalPayload
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.RefundPayload:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        paymentId:
+          type: string
+          format: uuid
+        serviceReference:
+          type: string
+        client:
+          type: string
+      required:
+        - amount
+        - currency
+        - paymentId
+        - serviceReference
+      title: RefundPayload
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        transactionType:
+          type: string
+          enum:
+            - CIT
+            - UNSCHEDULED
+            - RECURRING
+        serviceReference:
+          type: string
+        captureStrategy:
+          type: string
+          enum:
+            - AUTO_CAPTURE
+            - SKIP_CAPTURE
+        paymentDevice:
+          oneOf:
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ApplePayDetails'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.CardDetails'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.EncryptedGooglePayDetails'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.GooglePayDetails'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.StoredPaymentDevice'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.WalletPaymentDetails'
+        merchant:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.Merchant'
+        client:
+          type: string
+        expirationDate:
+          type: string
+          format: date-time
+        isImmediateCapture:
+          type: boolean
+      required:
+        - amount
+        - captureStrategy
+        - currency
+        - isImmediateCapture
+        - paymentDevice
+        - serviceReference
+        - transactionType
+      title: AuthorisationPayload
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ApplePayDetails:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice'
+        - type: object
+          properties:
+            accountReference:
+              type: string
+            encryptedPayload:
+              type: string
+            cardVendor:
+              type: string
+            source:
+              type: string
+            properties:
+              type: object
+              additionalProperties:
+                type: string
+            configuration:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentConfigurationDetails'
+            parkMobile:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ParkMobileDetails'
+      required:
+        - accountReference
+        - configuration
+        - encryptedPayload
+        - properties
+        - source
+        - type
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.CardDetails:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice'
+        - type: object
+          properties:
+            accountReference:
+              type: string
+            pspReference:
+              type: string
+            cardVendor:
+              type: string
+            expiryDate:
+              type: string
+            properties:
+              type: object
+              additionalProperties:
+                type: string
+            configuration:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentConfigurationDetails'
+            parkMobile:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ParkMobileDetails'
+      required:
+        - accountReference
+        - cardVendor
+        - configuration
+        - properties
+        - pspReference
+        - type
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.EncryptedGooglePayDetails:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice'
+        - type: object
+          properties:
+            accountReference:
+              type: string
+            encryptedPayload:
+              type: string
+            zipCode:
+              type: string
+            configuration:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentConfigurationDetails'
+            pmZoneGroupId:
+              type: integer
+              format: int64
+      required:
+        - accountReference
+        - configuration
+        - encryptedPayload
+        - type
+        - zipCode
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.GooglePayDetails:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice'
+        - type: object
+          properties:
+            accountReference:
+              type: string
+            pspReference:
+              type: string
+            cardVendor:
+              type: string
+            configuration:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentConfigurationDetails'
+            parkMobile:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ParkMobileDetails'
+            googleCardId:
+              type: integer
+              format: int64
+      required:
+        - accountReference
+        - cardVendor
+        - configuration
+        - pspReference
+        - type
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.Merchant:
+      type: object
+      properties:
+        settingsId:
+          type: string
+      required:
+        - settingsId
+      title: Merchant
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ParkMobileDetails:
+      type: object
+      properties:
+        pmZoneGroupId:
+          type: integer
+          format: int64
+        paymentMethodId:
+          type: string
+        clientUuid:
+          type: string
+          format: uuid
+        supplierId:
+          type: integer
+          format: int64
+      title: ParkMobileDetails
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentConfigurationDetails:
+      type: object
+      properties:
+        paymentConfigurationId:
+          type: string
+          format: uuid
+        countryCode:
+          type: string
+        paymentMethod:
+          type: string
+          enum:
+            - ADYEN
+            - GOOGLE_PAY_RECURRING
+            - CYBERSOURCE
+            - PARK_MOBILE
+      title: PaymentConfigurationDetails
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice:
+      type: object
+      discriminator:
+        propertyName: type
+      properties:
+        type:
+          type: string
+      required:
+        - type
+      title: PaymentDevice
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.StoredPaymentDevice:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice'
+        - type: object
+          properties:
+            paymentDeviceId:
+              type: string
+              format: uuid
+            pmZoneGroupId:
+              type: integer
+              format: int64
+      required:
+        - paymentDeviceId
+        - type
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.WalletPaymentDetails:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentDevice'
+        - type: object
+          properties:
+            accountReference:
+              type: string
+            fundingWalletPaymentMethodId:
+              type: string
+            zoneCode:
+              type: string
+            serviceCost:
+              type: number
+            configuration:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.PaymentConfigurationDetails'
+            parkMobile:
+              $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.payment.consumer.payload.AuthorisationPayload.ParkMobileDetails'
+      required:
+        - accountReference
+        - configuration
+        - fundingWalletPaymentMethodId
+        - parkMobile
+        - type
+    net.easypark.paymentgateway.adapter.payment.consumer.payload.CapturePayload:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        paymentId:
+          type: string
+          format: uuid
+        serviceReference:
+          type: string
+        client:
+          type: string
+      required:
+        - amount
+        - currency
+        - paymentId
+      title: CapturePayload
+    net.easypark.paymentgateway.adapter.paymentdevice.controller.ClonePaymentDeviceHttpResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The identifier of the cloned payment device
+      required:
+        - id
+    net.easypark.paymentgateway.adapter.controller.ErrorMessageResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+    net.easypark.paymentgateway.adapter.paymentdevice.controller.ClonePaymentDeviceHttpRequest:
+      type: object
+      properties:
+        accountReference:
+          type: string
+          description: The account reference of the newly cloned payment device
+          minLength: 1
+      required:
+        - accountReference
+      title: ClonePaymentDeviceHttpRequest
+    net.easypark.paymentgateway.adapter.paymentdevice.controller.PaymentDeviceHttpRequest:
+      type: object
+      properties:
+        serviceReference:
+          type: string
+        details:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.paymentdevice.controller.PaymentDeviceHttpRequest.CardDetailsRequest'
+      required:
+        - details
+        - serviceReference
+      title: PaymentDeviceHttpRequest
+    net.easypark.paymentgateway.adapter.paymentdevice.controller.PaymentDeviceHttpRequest.CardDetailsRequest:
+      type: object
+      properties:
+        accountReference:
+          type: string
+        pspReference:
+          type: string
+        cardVendor:
+          type: string
+        expiryDate:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - accountReference
+        - cardVendor
+        - properties
+        - pspReference
+      title: CardDetailsRequest
+    net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse:
+      type: object
+      properties:
+        paymentDeviceId:
+          type: string
+          format: uuid
+        status:
+          type: string
+      required:
+        - status
+      title: PaymentDeviceResponse
+    net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse.AlreadyExists:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse'
+      required:
+        - paymentDeviceId
+        - status
+    net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse.Created:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse'
+      required:
+        - paymentDeviceId
+        - status
+    net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse.Failure:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.paymentdevice.PaymentDeviceResponse'
+      required:
+        - status
+    net.easypark.paymentgateway.adapter.adyen.controller.model.googlepay.GooglePayInitializePaymentHttpRequest:
+      type: object
+      properties:
+        googlePayToken:
+          type: string
+          description: Token obtained from the Google Pay API PaymentData response.
+          minLength: 1
+        accountReference:
+          type: string
+          description: Reference to the billing account
+          example: BA-12345
+          minLength: 1
+        paymentConfigurationId:
+          type: string
+          format: uuid
+          description: Reference to the Google Pay configuration in Payment Gateway
+        returnUrl:
+          type: string
+          description: The URL to return to in case of a redirection
+          minLength: 1
+        origin:
+          type: string
+          description: Origin URL of the page that you are loading the 3D Secure Component from, required for 3DS2 when using Web integration
+      required:
+        - accountReference
+        - googlePayToken
+        - paymentConfigurationId
+        - returnUrl
+      title: GooglePayInitializePaymentHttpRequest
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenAction:
+      type: object
+      properties:
+        type:
+          type: string
+        subtype:
+          type: string
+        paymentData:
+          type: string
+        authorisationToken:
+          type: string
+        paymentMethodType:
+          type: string
+        token:
+          type: string
+        url:
+          type: string
+        data:
+          type: object
+          additionalProperties:
+            type: string
+        method:
+          type: string
+      title: AdyenAction
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentResponse:
+      type: object
+      properties:
+        pspReference:
+          type: string
+        merchantReference:
+          type: string
+        refusalReason:
+          type: string
+        resultCode:
+          type: string
+        additionalData:
+          type: object
+          additionalProperties:
+            type: string
+        fraudResult:
+          type: object
+          additionalProperties: {}
+        action:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenAction'
+        recurringReference:
+          type: string
+        merchantAdviceCode:
+          type: string
+        fraudResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/net.easypark.paymentgateway.application.adyen.paymentdevice.AdyenFraudResult'
+        cardVendor:
+          type: string
+        lastFourDigits:
+          type: string
+        expiryDate:
+          type: string
+        cardType:
+          type: string
+          enum:
+            - PRIVATE
+            - BUSINESS
+      required:
+        - additionalData
+        - fraudResult
+        - fraudResults
+        - resultCode
+      title: AdyenPaymentResponse
+    net.easypark.paymentgateway.application.adyen.paymentdevice.AdyenFraudResult:
+      type: object
+      properties:
+        accountScore:
+          type: integer
+          format: int32
+        name:
+          type: string
+      required:
+        - accountScore
+        - name
+      title: AdyenFraudResult
+    net.easypark.paymentgateway.adapter.adyen.controller.model.googlepay.GooglePayPaymentDetailsHttpRequest:
+      type: object
+      properties:
+        redirectResult:
+          type: string
+          description: The result of the 3D Secure authentication
+          minLength: 1
+        accountReference:
+          type: string
+          description: Reference to the billing account
+          example: BA-12345
+          minLength: 1
+        paymentConfigurationId:
+          type: string
+          format: uuid
+          description: Reference to the Google Pay configuration in Payment Gateway
+      required:
+        - accountReference
+        - paymentConfigurationId
+        - redirectResult
+      title: GooglePayPaymentDetailsHttpRequest
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentDetailsResponse:
+      type: object
+      properties:
+        pspReference:
+          type: string
+        merchantReference:
+          type: string
+        refusalReason:
+          type: string
+        resultCode:
+          type: string
+        additionalData:
+          type: object
+          additionalProperties:
+            type: string
+        fraudResult:
+          type: object
+          additionalProperties: {}
+        amount:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.provider.notification.model.AdyenRawAmount'
+        recurringReference:
+          type: string
+        merchantAdviceCode:
+          type: string
+        fraudResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/net.easypark.paymentgateway.application.adyen.paymentdevice.AdyenFraudResult'
+        cardVendor:
+          type: string
+        lastFourDigits:
+          type: string
+        expiryDate:
+          type: string
+        cardType:
+          type: string
+          enum:
+            - PRIVATE
+            - BUSINESS
+      required:
+        - additionalData
+        - fraudResults
+        - resultCode
+      title: AdyenPaymentDetailsResponse
+    net.easypark.paymentgateway.adapter.adyen.provider.notification.model.AdyenRawAmount:
+      type: object
+      properties:
+        value:
+          type: string
+        currency:
+          type: string
+      required:
+        - currency
+        - value
+      title: AdyenRawAmount
+    net.easypark.paymentgateway.application.payment.service.model.ReversalRequest:
+      type: object
+      properties:
+        serviceReference:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - serviceReference
+      title: ReversalRequest
+    net.easypark.paymentgateway.application.payment.service.model.MerchantAuthorisationRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        transactionType:
+          type: string
+          enum:
+            - CIT
+            - UNSCHEDULED
+            - RECURRING
+        paymentDeviceId:
+          type: string
+          format: uuid
+        serviceReference:
+          type: string
+        captureStrategy:
+          type: string
+          enum:
+            - AUTO_CAPTURE
+            - SKIP_CAPTURE
+        client:
+          type: string
+        merchant:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.application.payment.service.model.MerchantAuthorisationRequest.Merchant'
+        timestamp:
+          type: string
+          format: date-time
+        expirationDate:
+          type: string
+          format: date-time
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        isImmediateCapture:
+          type: boolean
+      required:
+        - amount
+        - captureStrategy
+        - currency
+        - isImmediateCapture
+        - merchant
+        - paymentDeviceId
+        - properties
+        - serviceReference
+        - timestamp
+        - transactionType
+      title: MerchantAuthorisationRequest
+    net.easypark.paymentgateway.application.payment.service.model.MerchantAuthorisationRequest.Merchant:
+      type: object
+      properties:
+        settingsId:
+          type: string
+      required:
+        - settingsId
+      title: Merchant
+    net.easypark.paymentgateway.adapter.cybersource.controller.model.applepay.ApplePayPaymentHttpRequest:
+      type: object
+      properties:
+        source:
+          type: string
+        encryptedPayload:
+          type: string
+        paymentDeviceId:
+          type: string
+        settingsId:
+          type: string
+        paymentId:
+          type: string
+        cardType:
+          type: string
+        capture:
+          type: boolean
+        amount:
+          type: number
+        currency:
+          type: string
+        transactionType:
+          type: string
+          enum:
+            - CIT
+            - UNSCHEDULED
+            - RECURRING
+      required:
+        - amount
+        - capture
+        - cardType
+        - currency
+        - encryptedPayload
+        - paymentDeviceId
+        - paymentId
+        - settingsId
+        - source
+        - transactionType
+      title: ApplePayPaymentHttpRequest
+    net.easypark.paymentgateway.domain.payment.ExpiredResponse:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.payment.PaymentResponse'
+        - type: object
+          properties:
+            reason:
+              type: string
+      required:
+        - externalStatus
+        - reason
+    net.easypark.paymentgateway.domain.payment.FailedResponse:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.payment.PaymentResponse'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - OK
+                - SOFT_DECLINE
+                - HARD_DECLINE
+                - TECHNICAL_ERROR
+                - TIMEOUT
+                - EXPIRED
+              writeOnly: true
+            reason:
+              type: string
+      required:
+        - externalStatus
+    net.easypark.paymentgateway.domain.payment.PaymentResponse:
+      type: object
+      properties:
+        pspReference:
+          type: string
+        externalStatus:
+          type: string
+          enum:
+            - OK
+            - SOFT_DECLINE
+            - HARD_DECLINE
+            - TECHNICAL_ERROR
+            - TIMEOUT
+            - EXPIRED
+      required:
+        - externalStatus
+      title: PaymentResponse
+    net.easypark.paymentgateway.domain.payment.PendingResponse:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.payment.PaymentResponse'
+      required:
+        - externalStatus
+        - pspReference
+    net.easypark.paymentgateway.domain.payment.SuccessfulResponse:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.domain.payment.PaymentResponse'
+      required:
+        - externalStatus
+        - pspReference
+    ? net.easypark.paymentgateway.adapter.cybersource.paymentwindow.controller.ExternalCyberSourcePaymentWindowController.TokenizationHttpRequest
+    : type: object
+      properties:
+        transientToken:
+          type: string
+        captureContext:
+          type: string
+        postalCode:
+          type: string
+        channel:
+          type: string
+          enum:
+            - ANDROID
+            - IOS
+            - WEB
+            - PERMITS
+            - GUEST_CHECKOUT
+            - UNKNOWN
+      required:
+        - captureContext
+        - channel
+        - postalCode
+        - transientToken
+      title: TokenizationHttpRequest
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenEncryptedCardPaymentMethod:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentMethod'
+        - type: object
+          properties:
+            encryptedCardNumber:
+              type: string
+            encryptedExpiryMonth:
+              type: string
+            encryptedExpiryYear:
+              type: string
+            encryptedSecurityCode:
+              type: string
+            holderName:
+              type: string
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentMethod:
+      type: object
+      discriminator:
+        propertyName: type
+      properties:
+        type:
+          type: string
+      title: AdyenPaymentMethod
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.GooglePayPaymentMethod:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentMethod'
+        - type: object
+          properties:
+            googlePayToken:
+              type: string
+      required:
+        - googlePayToken
+    net.easypark.paymentgateway.adapter.adyen.client.model.payment.StoredPaymentMethod:
+      allOf:
+        - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenPaymentMethod'
+        - type: object
+          properties:
+            storedPaymentMethodId:
+              type: string
+      required:
+        - storedPaymentMethodId
+    net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentHttpRequest:
+      type: object
+      properties:
+        checkoutAttemptId:
+          type: string
+        clientStateDataIndicator:
+          type: boolean
+        browserInfo:
+          type: object
+          additionalProperties: {}
+        riskData:
+          type: object
+          additionalProperties:
+            type: string
+        paymentMethod:
+          oneOf:
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.AdyenEncryptedCardPaymentMethod'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.GooglePayPaymentMethod'
+            - $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.payment.StoredPaymentMethod'
+        origin:
+          type: string
+      required:
+        - browserInfo
+        - clientStateDataIndicator
+        - paymentMethod
+        - riskData
+      title: AdyenPaymentHttpRequest
+    net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentDetails:
+      type: object
+      properties:
+        threeDSResult:
+          type: string
+      required:
+        - threeDSResult
+      title: AdyenPaymentDetails
+    net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentDetailsHttpRequest:
+      type: object
+      properties:
+        details:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentDetails'
+      required:
+        - details
+      title: AdyenPaymentDetailsHttpRequest
+    net.easypark.paymentgateway.adapter.adyen.controller.ExternalAdyenNotificationController.NotificationResponse:
+      type: object
+      properties:
+        notificationResponse:
+          type: string
+      required:
+        - notificationResponse
+      title: NotificationResponse
+    net.easypark.paymentgateway.application.adyen.paymentdevice.model.AdyenCardProperties:
+      type: object
+      properties:
+        brand:
+          type: string
+        lastFourDigits:
+          type: string
+        expiryDate:
+          type: string
+        cardType:
+          type: string
+      title: AdyenCardProperties
+    net.easypark.paymentgateway.application.adyen.paymentdevice.model.AdyenRecurringPaymentDeviceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        paymentConfigurationId:
+          type: string
+          format: uuid
+        paymentMethod:
+          type: string
+          enum:
+            - ADYEN
+            - GOOGLE_PAY_RECURRING
+            - CYBERSOURCE
+            - PARK_MOBILE
+        countryCode:
+          type: string
+        accountReference:
+          type: string
+        properties:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.application.adyen.paymentdevice.model.AdyenCardProperties'
+      required:
+        - accountReference
+        - countryCode
+        - id
+        - paymentConfigurationId
+        - paymentMethod
+        - properties
+    net.easypark.paymentgateway.adapter.blanket.model.BlanketPaymentConfigurationHttpRequest:
+      type: object
+      properties:
+        countryCode:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z]{2}$
+        enabled:
+          type: boolean
+      required:
+        - countryCode
+        - enabled
+      title: BlanketPaymentConfigurationHttpRequest
+    net.easypark.paymentgateway.application.blanket.repository.model.BlanketPaymentConfiguration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+        paymentMethod:
+          type: string
+          enum:
+            - ADYEN
+            - GOOGLE_PAY_RECURRING
+            - CYBERSOURCE
+            - PARK_MOBILE
+        countryCode:
+          type: string
+      required:
+        - countryCode
+        - enabled
+        - id
+        - paymentMethod
+      title: BlanketPaymentConfiguration
+    net.easypark.paymentgateway.adapter.onboarding.model.OnboardingDetailsHttpRequest:
+      type: object
+      properties:
+        countryCode:
+          type: string
+        paymentMethod:
+          type: string
+        accountReference:
+          type: string
+      required:
+        - accountReference
+        - countryCode
+        - paymentMethod
+      title: OnboardingDetailsHttpRequest
+    net.easypark.paymentgateway.adapter.onboarding.model.OnboardingDetails:
+      type: object
+      properties:
+        integration:
+          type: string
+        integrationMethod:
+          type: string
+      required:
+        - integration
+        - integrationMethod
+      title: OnboardingDetails
+    net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethod:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        brands:
+          type: array
+          items:
+            type: string
+        configuration:
+          $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethodConfiguration'
+        issuers:
+          type: array
+          items:
+            $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethodIssuers'
+      required:
+        - name
+        - type
+      title: AdyenClientPaymentMethod
+    net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethodConfiguration:
+      type: object
+      properties:
+        merchantId:
+          type: string
+        merchantName:
+          type: string
+        gatewayMerchantId:
+          type: string
+      required:
+        - merchantId
+      title: AdyenClientPaymentMethodConfiguration
+    net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethodIssuers:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        disabled:
+          type: boolean
+      required:
+        - id
+        - name
+      title: AdyenClientPaymentMethodIssuers
+    net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethodsResponse:
+      type: object
+      properties:
+        paymentMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/net.easypark.paymentgateway.adapter.adyen.client.model.paymentmethod.AdyenClientPaymentMethod'
+      required:
+        - paymentMethods
+      title: AdyenClientPaymentMethodsResponse
+    net.easypark.paymentgateway.adapter.adyen.controller.model.paymentwindow.AdyenPaymentWindowSessionDataResponse:
+      type: object
+      properties:
+        sessionData:
+          type: string
+      required:
+        - sessionData
+      title: AdyenPaymentWindowSessionDataResponse
